@@ -19,6 +19,7 @@ def load_csvs_to_duckdb(duckdb_conn):
         "sales": "sales.csv",
         "sku": "sku.csv",
         "templates": "templates.csv",
+        "contacts_loyalty": "contacts_loyalty.csv"
     }
 
     if not os.path.exists(data_dir):

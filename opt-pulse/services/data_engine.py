@@ -1,5 +1,6 @@
 import polars as pl
 from core.database import get_duckdb_connection, load_csvs_to_duckdb
+from typing import Dict, Any
 
 
 class DataEngine:
@@ -151,6 +152,107 @@ class DataEngine:
             )
         )
 
+    def get_campaign_performance(self) -> pl.LazyFrame:
+        """
+        Join templates with campaign metrics and calculate success rate.
+        """
+        sql = """
+        SELECT
+            t.id AS template_id,
+            t.msg_content,
+            COUNT(*) FILTER (WHERE cm.event_type = 'DELIVERED') AS delivered,
+            COUNT(*) FILTER (WHERE cm.event_type = 'CLICKED') AS clicked,
+            CASE
+                WHEN COUNT(*) FILTER (WHERE cm.event_type = 'DELIVERED') = 0 THEN 0
+                ELSE
+                    COUNT(*) FILTER (WHERE cm.event_type = 'CLICKED') * 1.0
+                    / COUNT(*) FILTER (WHERE cm.event_type = 'DELIVERED')
+            END AS success_rate
+        FROM templates t
+        LEFT JOIN campaign_metrics cm
+            ON t.id = cm.campaign_id
+        GROUP BY t.id, t.msg_content
+        """
+        return self._execute_duckdb_query(sql)
+
+    def get_user_group_profile(self, cid_start: int, cid_end: int) -> Dict[str, Any]:
+        """
+        Builds an aggregated user profile for a CID range.
+        """
+        sql = f"""
+        SELECT
+            c.gender,
+            c.city,
+            c.loyalty_customer,
+            COUNT(*) AS user_count,
+            AVG(s.quantity * s.sales_price) AS avg_spend
+        FROM contacts c
+        LEFT JOIN sales s ON c.cid = s.cid
+        WHERE c.cid BETWEEN {cid_start} AND {cid_end}
+        GROUP BY c.gender, c.city, c.loyalty_customer
+        """
+        lf = self._execute_duckdb_query(sql)
+        df = lf.collect()
+
+        if df.is_empty():
+            raise RuntimeError("No users found for given CID range")
+
+        return {
+            "total_users": df["user_count"].sum(),
+            "gender_distribution": df.group_by("gender").agg(pl.sum("user_count")).to_dicts(),
+            "city_distribution": df.group_by("city").agg(pl.sum("user_count")).to_dicts(),
+            "loyalty_split": df.group_by("loyalty_customer").agg(pl.sum("user_count")).to_dicts(),
+            "avg_spend": round(df["avg_spend"].mean(), 2)
+        }
+    def format_group_profile(profile: Dict[str, Any]) -> str:
+        return f"""
+    User Group Summary:
+    - Total Users: {profile['total_users']}
+    - Gender Distribution: {profile['gender_distribution']}
+    - City Distribution: {profile['city_distribution']}
+    - Loyalty Split: {profile['loyalty_split']}
+    - Average Spend: {profile['avg_spend']}
+    """
+
+    def get_contacts_loyalty(self) -> pl.LazyFrame:
+        sql = """
+        SELECT
+            contact_id,
+            total_loyalty_earned,
+            loyalty_balance,
+            created_date,
+            cummulative_purchase_value
+        FROM contacts_loyalty
+        """
+        return self._execute_duckdb_query(sql)
+
+    def get_loyalty_by_contact(self, contact_id: int) -> pl.LazyFrame:
+        sql = f"""
+        SELECT *
+        FROM contacts_loyalty
+        WHERE contact_id = {contact_id}
+        """
+        return self._execute_duckdb_query(sql)
+
+    def get_contacts_with_loyalty_balance_above(self, threshold: float) -> pl.LazyFrame:
+        sql = f"""
+        SELECT *
+        FROM contacts_loyalty
+        WHERE loyalty_balance > {threshold}
+        """
+        return self._execute_duckdb_query(sql)
+
+    def get_loyalty_aggregate(self) -> Dict[str, Any]:
+        sql = """
+        SELECT
+            SUM(total_loyalty_earned) AS total_loyalty_earned,
+            SUM(loyalty_balance) AS total_loyalty_balance,
+            SUM(cummulative_purchase_value) AS total_purchase_value
+        FROM contacts_loyalty
+        """
+        lf = self._execute_duckdb_query(sql)
+        df = lf.collect()
+        return df[0].to_dict() if not df.is_empty() else {}
 
 # -------------------------------
 # Local test

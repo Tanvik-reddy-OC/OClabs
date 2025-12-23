@@ -192,6 +192,7 @@ async def process_request(
             extracted_params["contact_ids"] = request["contact_ids"]
 
             result = brand_voice_agent.process(extracted_params)
+            logger.info(f"Brand Voice result: {result}")
 
 
         elif agent_type == "smart_receipt":

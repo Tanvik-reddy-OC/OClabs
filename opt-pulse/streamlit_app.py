@@ -247,34 +247,36 @@ if feature_selection == "Brand Voice Cloner":
                     }
                 )
 
-
             if response.status_code == 200:
-                result = response.json()
+                data = response.json()
+                if data.get("success", False):
+                    result = data.get("result", {})
 
-                st.markdown('<div class="card success-box">', unsafe_allow_html=True)
-                st.subheader("✨ Generated Campaign")
+                    st.markdown('<div class="card success-box">', unsafe_allow_html=True)
+                    st.subheader("✨ Generated Campaign")
 
-                st.text_area(
-                    "Campaign Body",
-                    value=result.get("new_campaign_body", ""),
-                    height=220
-                )
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric(
-                        "Predicted Success",
-                        f"{result.get('predicted_success_score', 0)} / 100"
+                    st.text_area(
+                        "Campaign Body",
+                        value=result.get("new_campaign_body", ""),
+                        height=220
                     )
 
-                with col2:
-                    st.write("**Learned Patterns**")
-                    st.json(result.get("inferred_patterns", {}))
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric(
+                            "Predicted Success",
+                            f"{result.get('predicted_success_score', 0)} / 100"
+                        )
 
-                st.markdown('</div>', unsafe_allow_html=True)
+                    with col2:
+                        st.write("**Learned Patterns**")
+                        st.json(result.get("inferred_patterns", {}))
 
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.error("Failed to generate campaign. Please try again.")
             else:
-                st.error(response.text)
+                st.error(f"Error from server: {response.text}")
 
 # ==========================================================
 # ❌ SMART RECEIPTS (UNCHANGED)

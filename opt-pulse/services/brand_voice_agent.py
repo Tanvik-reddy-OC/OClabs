@@ -127,7 +127,7 @@ User Group Profile:
             }
         )
 
-        return result.model_dump()
+        return result
 
     # --------------------------------------------------------------
     # HELPERS

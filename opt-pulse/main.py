@@ -299,18 +299,16 @@ async def api_info():
     }
 
 
-# ------------------------------------------------------------------
-# Error handling
-# ------------------------------------------------------------------
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    """Custom HTTP exception handler."""
+async def http_exception_handler(request, exc: HTTPException):
     logger.error(f"HTTP Exception: {exc.detail}")
-    return {
-        "success": False,
-        "error": exc.detail,
-        "status_code": exc.status_code
-    }
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": exc.detail,
+        },
+    )
 
 
 if __name__ == "__main__":

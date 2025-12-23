@@ -98,14 +98,17 @@ Instructions:
             
             result = self.triage_chain.invoke({"request_json": request_json})
             
-            logger.info(f"Triage classification complete: {result.agent_type} (confidence: {result.confidence})")
-            logger.info(f"Reasoning: {result.reasoning}")
+            logger.info(
+    f"Triage classification complete: {result['agent_type']} "
+    f"(confidence: {result['confidence']})"
+)
+            logger.info(f"Reasoning: {result['reasoning']}")
             
             return {
-                "agent_type": result.agent_type,
-                "extracted_params": result.extracted_params,
-                "confidence": result.confidence,
-                "reasoning": result.reasoning
+                "agent_type": result["agent_type"],
+                "extracted_params": result.get("extracted_params", {}),
+                "confidence": result.get("confidence", 1.0),
+                "reasoning": result.get("reasoning", "")
             }
             
         except Exception as e:

@@ -19,6 +19,8 @@ class ImageService:
         template_path = os.path.join(ASSETS_DIR, template_name)
         if not os.path.exists(template_path):
             print(f"Placeholder template '{template_name}' not found. Creating a simple one.")
+            # Ensure the assets directory exists before saving the file
+            os.makedirs(ASSETS_DIR, exist_ok=True)
             # Create a simple white image
             img = Image.new('RGB', (800, 500), color = (255, 255, 255))
             d = ImageDraw.Draw(img)

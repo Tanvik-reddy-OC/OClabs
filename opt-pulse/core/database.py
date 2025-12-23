@@ -3,47 +3,54 @@ import duckdb
 
 def get_duckdb_connection():
     """Initializes and returns a DuckDB in-memory connection."""
-    # For a persistent DB, specify a file path: duckdb.connect('my_database.duckdb')
-    return duckdb.connect(database=':memory:')
+    return duckdb.connect(database=":memory:")
 
 def load_csvs_to_duckdb(duckdb_conn):
     """
-    Loads CSV files from the data directory into DuckDB tables.
+    Loads all CSV files from the data directory into DuckDB tables.
+    Table name = CSV filename (without .csv)
     """
-    # Define paths to CSV files
-    # Assuming the 'data' directory is in the project root, one level up from 'core'
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(base_dir, "data")
-    
-    transactions_csv = os.path.join(data_dir, "transactions.csv")
-    customers_csv = os.path.join(data_dir, "customers.csv")
 
-    if not os.path.exists(transactions_csv) or not os.path.exists(customers_csv):
-         raise FileNotFoundError(f"CSV files not found in {data_dir}. Please ensure transactions.csv and customers.csv exist.")
+    csv_files = {
+        "campaign_metrics": "campaign_metrics.csv",
+        "contacts": "contacts.csv",
+        "sales": "sales.csv",
+        "sku": "sku.csv",
+        "templates": "templates.csv",
+    }
 
-    # Create tables from CSVs
-    # DuckDB can read directly from CSVs using read_csv_auto
-    print(f"Loading transactions from {transactions_csv}...")
-    duckdb_conn.execute(f"CREATE OR REPLACE TABLE transactions AS SELECT * FROM read_csv_auto('{transactions_csv}');")
-    
-    print(f"Loading customers from {customers_csv}...")
-    duckdb_conn.execute(f"CREATE OR REPLACE TABLE customers AS SELECT * FROM read_csv_auto('{customers_csv}');")
-    
-    print("CSV data loaded into DuckDB tables 'transactions' and 'customers'.")
+    if not os.path.exists(data_dir):
+        raise FileNotFoundError(f"Data directory not found: {data_dir}")
 
-# Example usage (for testing, not for production direct execution)
+    for table_name, csv_file in csv_files.items():
+        csv_path = os.path.join(data_dir, csv_file)
+
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"Missing CSV file: {csv_path}")
+
+        print(f"Loading {table_name} from {csv_path}...")
+        duckdb_conn.execute(
+            f"""
+            CREATE OR REPLACE TABLE {table_name} AS
+            SELECT *
+            FROM read_csv_auto('{csv_path}', HEADER=TRUE);
+            """
+        )
+
+    print("All CSVs loaded into DuckDB successfully.")
+
+# Example usage (for testing only)
 if __name__ == "__main__":
     try:
-        duckdb_conn = get_duckdb_connection()
+        conn = get_duckdb_connection()
         print("DuckDB connection established.")
-        
-        load_csvs_to_duckdb(duckdb_conn)
-        print("Attempting to query tables...")
-        
-        # Example: List tables
-        tables = duckdb_conn.execute("SHOW TABLES;").fetchdf()
-        print("Tables in DuckDB:")
-        print(tables)
-        
+
+        load_csvs_to_duckdb(conn)
+
+        print("\nTables in DuckDB:")
+        print(conn.execute("SHOW TABLES;").fetchdf())
+
     except Exception as e:
         print(f"An error occurred: {e}")

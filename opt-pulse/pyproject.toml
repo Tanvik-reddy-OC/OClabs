@@ -1,0 +1,23 @@
+[project]
+name = "opt-pulse"
+version = "0.1.0"
+description = "Opt Pulse Recommendation Engine 3.0 by OC Labs"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=1.4.3",
+    "fastapi>=0.127.0",
+    "langchain>=1.2.0",
+    "langchain-core>=1.2.5",
+    "langchain-openai>=1.1.6",
+    "mysql-connector-python>=9.5.0",
+    "openai>=2.14.0",
+    "openai-agents>=0.6.4",
+    "pillow>=12.0.0",
+    "polars>=1.36.1",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy>=2.0.45",
+    "streamlit>=1.52.2",
+    "uvicorn>=0.40.0",
+]

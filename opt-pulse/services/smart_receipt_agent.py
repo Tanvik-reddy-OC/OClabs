@@ -101,7 +101,7 @@ Past purchase patterns:
             
             # Fetch past purchase patterns
             if data_engine:
-                past_transactions_lf = data_engine.get_transaction_history(user_id)
+                past_transactions_lf = data_engine.get_enriched_sales(user_id)
                 past_transactions = past_transactions_lf.collect()
                 
                 # Create summary of past purchases
@@ -115,10 +115,12 @@ User {user_id} Purchase History:
             
             # Generate recommendations using AI
             logger.info("Calling AI for Smart Receipt Recommendations...")
-            ai_output = self.chain.invoke({
-                "current_basket_items": basket_str,
-                "past_purchase_patterns": past_patterns_str
+            raw_output = self.chain.invoke({
+                   "current_basket_items": basket_str,
+                   "past_purchase_patterns": past_patterns_str
             })
+
+            ai_output = SmartReceiptRecommenderOutput(**raw_output)
             logger.info("Smart Receipt Recommendations generated successfully.")
             
             # Format next_best_item as a product object if available

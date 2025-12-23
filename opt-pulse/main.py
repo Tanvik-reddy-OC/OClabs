@@ -3,7 +3,7 @@ import os
 from typing import Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.triage_agent import TriageAgent

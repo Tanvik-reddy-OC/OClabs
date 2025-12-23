@@ -427,8 +427,9 @@ elif feature_selection == "Smart Receipts":
 
         if submit_receipt:
             response = requests.post(
-                f"{FASTAPI_BASE_URL}/smart-receipt",
+                f"{FASTAPI_BASE_URL}/process",
                 json={
+                    "query" : "Generate smart receipt recommendations for the current purchase.You are only allowed to recommend items from the provided inventory SKU list.Do NOT invent or suggest any product that is not present in the inventory Decision priority: 1. Select complementary items from the inventory that are closely related to the current basket items (same category, usage, or frequently co-purchased). 2. If no strong complement exists, select items from the inventory that match the customer’s past purchase patterns. 3. If neither applies, provide a non-product contextual tip (for example: usage advice or seasonal suggestion) instead of recommending a product. Rules: All recommended products must exist in the provided SKU inventory.If no suitable SKU exists, return a helpful tip instead of a product.Recommend at most 3 items.Each recommendation must include a short reason. Output must be concise and suitable for a digital receipt.",
                     "user_id": customer_id,
                     "current_basket_items": current_basket_payload
                 }

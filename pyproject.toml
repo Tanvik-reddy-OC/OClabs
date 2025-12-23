@@ -1,7 +1,7 @@
 [project]
 name = "oclabs"
 version = "0.1.0"
-description = "Add your description here"
+description = "Opt Pulse" Recommendation Engine 3.0 by OC Labs
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

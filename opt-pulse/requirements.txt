@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+streamlit
+polars
+duckdb
+pydantic
+langchain
+openai
+pillow
+python-dotenv

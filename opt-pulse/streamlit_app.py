@@ -1,13 +1,14 @@
 import streamlit as st
 import requests
-import json
 import os
 from typing import Dict, Any, List
 from services.data_engine import DataEngine
-# FastAPI Base URL
+
 FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
 
-# --- Page Configuration ---
+# --------------------------------------------------
+# Page Config
+# --------------------------------------------------
 st.set_page_config(
     page_title="Optic Pulse",
     page_icon="⚡",
@@ -15,196 +16,288 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Styling (UNCHANGED) ---
+# --------------------------------------------------
+# Global Styling
+# --------------------------------------------------
 st.markdown("""
 <style>
-
-/* App background */
 .main {
     background-color: #121212;
     color: #eaeaea;
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #1f1f1f;
 }
 
-/* Headings */
 h1, h2, h3 {
     color: #00e5ff;
-    letter-spacing: 0.5px;
 }
 
-/* Card container */
 .card {
     background: linear-gradient(145deg, #1e1e1e, #262626);
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 20px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-    margin-bottom: 20px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.4);
 }
 
-/* Buttons */
 .stButton>button {
     background: linear-gradient(135deg, #00bfa5, #00796b);
     color: white;
-    border-radius: 8px;
-    border: none;
-    padding: 10px 24px;
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.stButton>button:hover {
-    background: linear-gradient(135deg, #00e5ff, #00838f);
-}
-
-/* Text areas */
-textarea {
-    background-color: #1c1c1c !important;
-    border-radius: 8px !important;
-    border: 1px solid #333 !important;
-}
-
-/* Select / multiselect */
-div[data-baseweb="select"] {
-    background-color: #1c1c1c !important;
-    border-radius: 8px;
-}
-
-/* Status boxes */
-.stAlert {
     border-radius: 10px;
-}
-
-/* Success highlight */
-.success-box {
-    border-left: 5px solid #00e676;
-    padding-left: 15px;
+    border: none;
+    padding: 12px 26px;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap');
 
-st.title("⚡ Optic Pulse - AI Retail Suite")
-st.markdown("Unlock AI-powered insights for your retail operations.")
+/* The Phone Container */
+.phone-container {
+    background: #000;
+    border-radius: 40px;
+    padding: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 8px solid #333;
+    position: relative;
+    overflow: hidden;
+}
 
-# --- Sidebar Navigation ---
+/* The Vibe Card Gradient Background */
+.vibe-gradient-bg {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 30px;
+    padding: 30px 20px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    min-height: 600px;
+    position: relative;
+}
+
+/* Header Section */
+.vibe-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.vibe-year {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+.vibe-main-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(to right, #fff, #a5b4fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-top: 10px;
+    line-height: 1.1;
+}
+
+/* The "Bento Box" Grid Stats */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.stat-box {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.stat-box:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* Highlight Box (Like the Weekend Warrior) */
+.highlight-box {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    border-radius: 24px;
+    padding: 25px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+}
+
+.highlight-title {
+    font-size: 26px;
+    font-weight: 800;
+    font-family: 'Space Grotesk', sans-serif;
+    margin-bottom: 5px;
+}
+
+.highlight-sub {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* Color Vibe Strip */
+.color-vibe-strip {
+    display: flex;
+    align-items: center;
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px;
+    padding: 10px 15px;
+    margin-top: 15px;
+}
+.color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    margin-right: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Footer Share Button Look */
+.share-btn {
+    background: white;
+    color: black;
+    text-align: center;
+    padding: 15px;
+    border-radius: 50px;
+    font-weight: 700;
+    margin-top: 30px;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# --------------------------------------------------
+# App Header
+# --------------------------------------------------
+st.title("⚡ Optic Pulse")
+st.caption("AI-powered retail intelligence")
+
+# --------------------------------------------------
+# Sidebar
+# --------------------------------------------------
 st.sidebar.header("Navigation")
 feature_selection = st.sidebar.radio(
     "Choose a Feature",
     ["Vibe Report", "Brand Voice Cloner", "Smart Receipts"]
 )
 
-# ==========================================================
-# ✅ VIBE REPORT (ONLY SECTION MODIFIED)
-# ==========================================================
 if feature_selection == "Vibe Report":
-    st.header("✨ Vibe Report: Discover Customer Personas")
-    st.write("Generate a 'wrapped-style' loyalty report for your customers.")
-
+    st.header("✨ Vibe Report")
+    
     with st.form("vibe_report_form"):
-        user_id = st.text_input(
-            "Customer User ID",
-            help="Enter contactId / user_id from CSV"
-        )
+        user_id = st.text_input("Customer User ID", value="20186130") # Default for testing
         submit_vibe = st.form_submit_button("Generate Vibe Report")
 
     if submit_vibe:
-        if not user_id.strip():
-            st.warning("Please enter a Customer User ID.")
-            st.stop()
-
-        payload = {"user_id": user_id.strip()}
-
-        with st.spinner("Generating Vibe Report..."):
+        with st.spinner("Analyzing purchase history & calculating vibe..."):
             try:
                 response = requests.post(
                     f"{FASTAPI_BASE_URL}/process",
-                    json=payload,
+                    json={"user_id": user_id.strip(), "agent_type": "vibe_report"},
                     timeout=60
                 )
-
-                # ---- Handle backend errors safely ----
-                if response.status_code != 200:
-                    st.error("Backend error")
-                    st.write("Status code:", response.status_code)
-                    try:
-                        st.json(response.json())
-                    except Exception:
-                        st.text("Raw response:")
-                        st.text(response.text)
-                    st.stop()
-
-                # ---- Safe JSON parsing ----
-                try:
-                    api_response = response.json()
-                except Exception:
-                    st.error("API did not return valid JSON")
-                    st.text(response.text)
-                    st.stop()
-
-                vibe_data = api_response.get("result")
-                if not vibe_data:
-                    st.error("Missing 'result' in API response")
-                    st.json(api_response)
-                    st.stop()
-
-                # ---- UI rendering (UNCHANGED) ----
-                st.success("Vibe Report Generated!")
-                st.balloons()
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.subheader(f"Persona for @{vibe_data.get('user_id', 'N/A')}")
-                    st.markdown(f"### {vibe_data.get('shopping_persona', 'N/A')}")
-
-                    st.subheader("Behavioral Metrics")
-                    for k, v in vibe_data.get("behavioral_metrics", {}).items():
-                        st.write(f"**{k.replace('_',' ').title()}:** {v}")
-
-                    st.subheader("Purchase Metrics")
-                    for k, v in vibe_data.get("purchase_metrics", {}).items():
-                        st.write(f"**{k.replace('_',' ').title()}:** {v}")
-
-                    st.subheader("Color Palette Hints")
-                    colors = vibe_data.get("color_palette_hints", [])
-                    if colors:
-                        for c in colors:
-                            st.markdown(
-                                f"<span style='background-color:{c}; padding:6px; border-radius:4px; margin-right:6px;'>{c}</span>",
-                                unsafe_allow_html=True
-                            )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    result = data.get("result", {})
+                    
+                    if "error" in result:
+                        st.error(result["error"])
                     else:
-                        st.write("No color hints found.")
+                        ai_content = result.get("ai_content", {})
+                        raw_stats = result.get("raw_stats", {})
 
-                with col2:
-                    vibe_card_path = vibe_data.get("vibe_card_path")
-                    if vibe_card_path:
-                        filename = os.path.basename(vibe_card_path)
-                        image_url = f"{FASTAPI_BASE_URL}/static/{filename}"
+                        # -------------------------
+                        # RENDER THE UI CARD
+                        # -------------------------
+                        col1, col2, col3 = st.columns([1, 1.5, 1])
+                        
+                        with col2:
+                            # Dynamic HTML Injection
+                            st.markdown(f"""
+                            <div class="phone-container">
+                                <div class="vibe-gradient-bg">
+                                    <div class="vibe-header">
+                                        <div class="vibe-year">YOUR 2024</div>
+                                        <div class="vibe-main-title">Retail Wrapped</div>
+                                    </div>
 
-                        st.image(
-                            image_url,
-                            caption="Your Personalized Vibe Card",
-                            use_column_width=True
-                        )
+                                    <div class="highlight-box">
+                                        <div class="highlight-title">{ai_content.get('vibe_title', 'The Shopper')}</div>
+                                        <div class="highlight-sub">{ai_content.get('vibe_subtitle', 'Always on trend.')}</div>
+                                    </div>
 
-                        st.download_button(
-                            label="Download Vibe Card",
-                            data=requests.get(image_url).content,
-                            file_name=filename,
-                            mime="image/png"
-                        )
-                    else:
-                        st.warning("No vibe card image generated.")
+                                    <div class="stats-grid">
+                                        <div class="stat-box">
+                                            <div class="stat-label">🛍️ Top Category</div>
+                                            <div class="stat-value">{ai_content.get('top_category', 'General')}</div>
+                                        </div>
+                                        
+                                        <div class="stat-box">
+                                            <div class="stat-label">📅 Peak Day</div>
+                                            <div class="stat-value">{raw_stats.get('top_day', 'Saturday')}</div>
+                                        </div>
 
-            except requests.exceptions.RequestException as e:
-                st.error("Could not connect to backend")
-                st.text(str(e))
+                                        <div class="stat-box">
+                                            <div class="stat-label">🏆 Fun Fact</div>
+                                            <div style="font-size: 14px; line-height: 1.4;">
+                                                {ai_content.get('fun_fact', 'You are a star shopper!')}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="color-vibe-strip">
+                                        <div class="color-swatch" style="background-color: {ai_content.get('color_vibe', '#7c3aed')}"></div>
+                                        <div>
+                                            <div style="font-size: 10px; opacity: 0.7;">YOUR COLOR AURA</div>
+                                            <div style="font-weight: 600;">{ai_content.get('color_name', 'Royal Purple')}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="share-btn">
+                                        Total Spend: ₹{raw_stats.get('total_spend', 0)}
+                                    </div>
+
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                else:
+                    st.error(f"Error: {response.text}")
+            except Exception as e:
+                st.error(f"Connection Error: {e}")
+    st.markdown(custom_css + html_content, unsafe_allow_html=True)
 
 # ==========================================================
 # ❌ BRAND VOICE CLONER (UNCHANGED)

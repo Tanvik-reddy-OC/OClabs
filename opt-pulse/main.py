@@ -12,6 +12,7 @@ from services.brand_voice_agent import BrandVoiceAgent
 from services.smart_receipt_agent import SmartReceiptAgent
 from services.image_service import ImageService, STATIC_DIR
 from services.data_engine import DataEngine
+from fastapi.responses import JSONResponse
 
 # ------------------------------------------------------------------
 # Logging

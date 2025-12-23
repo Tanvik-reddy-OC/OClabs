@@ -260,6 +260,48 @@ class DataEngine:
         FROM contacts
         """
         return self._execute_duckdb_query(sql)
+    
+    def get_transaction_history(self, cid: str) -> pl.LazyFrame:
+        """
+        Returns sales transactions enriched with customer & product data
+        (Polars LazyFrame)
+        """
+        sql = f"""
+        SELECT
+            c.cid,
+            c.first_name,
+            c.last_name,
+            c.city,
+            c.gender,
+            c.loyalty_customer,
+
+            cl.total_loyalty_earned,
+            cl.loyalty_balance,
+
+            s.sales_id,
+            s.sales_date,
+            s.quantity,
+            s.sales_price,
+            s.discount,
+            s.item_sid,
+
+            p.description,
+            p.item_category,
+            p.vendor_code,
+            p.department_code,
+            p.list_price
+        FROM sales s
+        JOIN contacts c
+            ON s.cid = c.cid
+        JOIN contacts_loyalty cl
+            ON c.cid = cl.contact_id
+        LEFT JOIN sku p
+            ON s.inventory_id = p.sku_id
+        WHERE s.cid = '{cid}'
+        """
+
+        return self._execute_duckdb_query(sql)
+
 # -------------------------------
 # Local test
 # -------------------------------

@@ -253,7 +253,13 @@ class DataEngine:
         lf = self._execute_duckdb_query(sql)
         df = lf.collect()
         return df[0].to_dict() if not df.is_empty() else {}
-
+        
+    def get_contact_ids(self) -> pl.LazyFrame:
+        sql = """
+        SELECT cid
+        FROM contacts
+        """
+        return self._execute_duckdb_query(sql)
 # -------------------------------
 # Local test
 # -------------------------------

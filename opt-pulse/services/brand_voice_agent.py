@@ -24,58 +24,45 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
-# OUTPUT SCHEMA
+# OUTPUT SCHEMA (ONLY THIS USES BaseModel)
 # ------------------------------------------------------------------
-class BrandVoiceAgent(BaseModel):
+class BrandVoiceOutput(BaseModel):
     new_campaign_body: str = Field(description="Generated campaign body text")
-    predicted_success_score: int = Field(
-        description="Predicted success score (0–100)",
-        ge=0,
-        le=100
-    )
-    inferred_patterns: Dict[str, str] = Field(
-        description="Patterns learned from historical campaigns"
-    )
+    predicted_success_score: int = Field(ge=0, le=100)
+    inferred_patterns: Dict[str, str]
 
 # ------------------------------------------------------------------
-# LLM SERVICE
+# BRAND VOICE AGENT (SERVICE — NOT A MODEL)
 # ------------------------------------------------------------------
-class BrandVoiceLLMService:
-    """
-    Builds data-driven campaign content using:
-    - templates
-    - campaign_metrics
-    - aggregated user group profile (CID range)
-    """
-
+class BrandVoiceAgent:
     def __init__(self):
         self.data_engine = DataEngine()
 
         self.llm = ChatOpenAI(
             model="gpt-4o",
             temperature=0.25,
-            api_key=OPENAI_API_KEY
+            api_key=OPENAI_API_KEY,
         )
 
         self.parser = JsonOutputParser(
-            pydantic_object=BrandVoiceAgent
+            pydantic_object=BrandVoiceOutput
         )
 
         self.prompt = ChatPromptTemplate.from_messages(
             [
                 (
-                    "system",
+                     "system",
                     """
 You are a senior marketing intelligence AI.
 
 You are given historical campaign messages with their real-world success rates,
-and a summarized user group profile.
+and a summarized user group profile to whom the message will be sent.
 
 Your task:
 1. Identify patterns in HIGH vs LOW performing campaigns
-2. Infer brand voice (tone, urgency, emoji usage, CTA style)
+2. Infer brand voice (tone, urgency, emoji usage, CTA style) that resonates with this user group and also is individual to that brands persona
 3. Generate a NEW campaign body optimized for this user group
-4. Predict the success score (0–100)
+4. Predict the success score (0–100), based on historical data and inferred patterns
 
 Be data-driven. Do not hallucinate unsupported patterns.
 """
@@ -91,7 +78,7 @@ User Group Profile:
 
 {format_instructions}
 """
-                )
+                ),
             ]
         ).partial(
             format_instructions=self.parser.get_format_instructions()
@@ -99,93 +86,51 @@ User Group Profile:
 
         self.chain = self.prompt | self.llm | self.parser
 
-    # ------------------------------------------------------------------
-    # CORE ENTRY POINT
-    # ------------------------------------------------------------------
-    def generate_campaign(
-        self,
-        cid_start: int,
-        cid_end: int
-    ) -> Dict[str, Any]:
-        """
-        Generate a campaign using historical performance
-        and an aggregated user group profile.
-        """
-        logger.info(
-            f"Generating campaign for CID range {cid_start}–{cid_end}"
-        )
+    # --------------------------------------------------------------
+    # PUBLIC ENTRY POINT (used by FastAPI)
+    # --------------------------------------------------------------
+    def process(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        contact_ids = params.get("contact_ids")
 
-        # 1. Build user group profile
-        profile = self.data_engine.get_user_group_profile(
-            cid_start,
-            cid_end
-        )
+        if not contact_ids:
+            raise ValueError("contact_ids is required")
+
+        cid_start = min(contact_ids)
+        cid_end = max(contact_ids)
+
+        logger.info(f"Generating campaign for CID range {cid_start}–{cid_end}")
+
+        profile = self.data_engine.get_user_group_profile(cid_start, cid_end)
         formatted_profile = self._format_user_profile(profile)
 
-        # 2. Fetch campaign performance
-        lf = self.data_engine.get_campaign_performance()
-        df = lf.collect()
-
+        df = self.data_engine.get_campaign_performance().collect()
         if df.is_empty():
             raise RuntimeError("No campaign history found")
 
-        # 3. Use top-performing campaigns as learning signal
         df = df.sort("success_rate", descending=True).head(10)
 
-        campaign_blocks = []
-        for row in df.iter_rows(named=True):
-            campaign_blocks.append(
-                f"""
-Campaign Message:
-{row['msg_content']}
+        campaign_history = "\n\n---\n\n".join(
+            f"""
+    Campaign Message:
+    {row['msg_content']}
 
-Observed Success Rate:
-{round(row['success_rate'] * 100, 2)}%
-"""
-            )
+    Observed Success Rate:
+    {round(row['success_rate'] * 100, 2)}%
+    """
+            for row in df.iter_rows(named=True)
+        )
 
-        campaign_history = "\n\n---\n\n".join(campaign_blocks)
-
-        # 4. Call LLM
-        logger.info("Invoking LLM for brand voice generation...")
-
-        result = self.chain.invoke(
+        result: BrandVoiceOutput = self.chain.invoke(
             {
                 "campaign_history": campaign_history,
-                "user_profile": formatted_profile
+                "user_profile": formatted_profile,
             }
         )
 
-        logger.info("Campaign generation successful")
-        logger.debug(f"LLM Output: {result}")
+        return result.model_dump()
 
-        return result
-
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     # HELPERS
-    # ------------------------------------------------------------------
-    def _format_user_profile(
-        self,
-        profile: Dict[str, Any]
-    ) -> str:
-        """
-        Converts aggregated user stats into LLM-readable text.
-        """
-        lines = []
-        for key, value in profile.items():
-            lines.append(f"{key}: {value}")
-        return "\n".join(lines)
-
-# ------------------------------------------------------------------
-# LOCAL TEST
-# ------------------------------------------------------------------
-if __name__ == "__main__":
-    service = BrandVoiceLLMService()
-
-    output = service.generate_campaign(
-        cid_start=20186123,
-        cid_end=20186128
-    )
-
-    import json
-    print(json.dumps(output, indent=2))
+    # --------------------------------------------------------------
+    def _format_user_profile(self, profile: Dict[str, Any]) -> str:
+        return "\n".join(f"{k}: {v}" for k, v in profile.items())

@@ -3,7 +3,7 @@ import requests
 import json
 import os
 from typing import Dict, Any, List
-
+from services.data_engine import DataEngine
 # FastAPI Base URL
 FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
 
@@ -17,22 +17,76 @@ st.set_page_config(
 
 # --- Styling (UNCHANGED) ---
 st.markdown("""
-    <style>
-    .main { background-color: #1a1a1a; color: #e0e0e0; }
-    .st-emotion-cache-z5fcl4 { background-color: #2a2a2a; }
-    .st-emotion-cache-z5fcl4 .st-bm { color: #e0e0e0; }
-    h1, h2, h3, h4, h5, h6 { color: #00bcd4; }
-    .stButton>button {
-        background-color: #00796b;
-        color: white;
-        border-radius: 5px;
-        border: none;
-        padding: 10px 20px;
-        font-size: 16px;
-    }
-    .stButton>button:hover { background-color: #004d40; }
-    </style>
+<style>
+
+/* App background */
+.main {
+    background-color: #121212;
+    color: #eaeaea;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #1f1f1f;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #00e5ff;
+    letter-spacing: 0.5px;
+}
+
+/* Card container */
+.card {
+    background: linear-gradient(145deg, #1e1e1e, #262626);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    margin-bottom: 20px;
+}
+
+/* Buttons */
+.stButton>button {
+    background: linear-gradient(135deg, #00bfa5, #00796b);
+    color: white;
+    border-radius: 8px;
+    border: none;
+    padding: 10px 24px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.stButton>button:hover {
+    background: linear-gradient(135deg, #00e5ff, #00838f);
+}
+
+/* Text areas */
+textarea {
+    background-color: #1c1c1c !important;
+    border-radius: 8px !important;
+    border: 1px solid #333 !important;
+}
+
+/* Select / multiselect */
+div[data-baseweb="select"] {
+    background-color: #1c1c1c !important;
+    border-radius: 8px;
+}
+
+/* Status boxes */
+.stAlert {
+    border-radius: 10px;
+}
+
+/* Success highlight */
+.success-box {
+    border-left: 5px solid #00e676;
+    padding-left: 15px;
+}
+
+</style>
 """, unsafe_allow_html=True)
+
 
 st.title("⚡ Optic Pulse - AI Retail Suite")
 st.markdown("Unlock AI-powered insights for your retail operations.")
@@ -155,26 +209,72 @@ if feature_selection == "Vibe Report":
 # ==========================================================
 # ❌ BRAND VOICE CLONER (UNCHANGED)
 # ==========================================================
-elif feature_selection == "Brand Voice Cloner":
+if feature_selection == "Brand Voice Cloner":
     st.header("✍️ Brand Voice Cloner")
-    st.write("Analyze past campaign texts to generate new content.")
+    st.caption("Learn from past campaigns and generate high-impact messaging")
 
-    with st.form("brand_voice_form"):
-        campaign_texts_input = st.text_area(
-            "Past Campaign Texts (one per line)",
-            height=200
+    with st.container():
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
+        @st.cache_data(show_spinner=False)
+        def load_contact_ids():
+            engine = DataEngine()
+            df = engine.get_contact_ids().collect()
+            return df["cid"].to_list()
+
+        contact_ids = load_contact_ids()
+
+        selected_cids = st.multiselect(
+            "👥 Select Target Contacts",
+            contact_ids,
+            help="These users will be analyzed as a group persona"
         )
-        submit_brand_voice = st.form_submit_button("Generate New Campaign")
 
-        if submit_brand_voice:
-            campaign_texts = [
-                t.strip() for t in campaign_texts_input.split("\n") if t.strip()
-            ]
-            response = requests.post(
-                f"{FASTAPI_BASE_URL}/brand-voice",
-                json={"campaign_texts": campaign_texts}
-            )
-            st.json(response.json())
+        generate = st.button("🚀 Generate Campaign")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if generate:
+        if not selected_cids:
+            st.error("Select at least one contact")
+        else:
+            with st.spinner("Analyzing brand voice & user behavior..."):
+                response = requests.post(
+                    f"{FASTAPI_BASE_URL}/process",
+                    json={
+                        "agent_type": "brand_voice",
+                        "contact_ids": selected_cids
+                    }
+                )
+
+
+            if response.status_code == 200:
+                result = response.json()
+
+                st.markdown('<div class="card success-box">', unsafe_allow_html=True)
+                st.subheader("✨ Generated Campaign")
+
+                st.text_area(
+                    "Campaign Body",
+                    value=result.get("new_campaign_body", ""),
+                    height=220
+                )
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(
+                        "Predicted Success",
+                        f"{result.get('predicted_success_score', 0)} / 100"
+                    )
+
+                with col2:
+                    st.write("**Learned Patterns**")
+                    st.json(result.get("inferred_patterns", {}))
+
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            else:
+                st.error(response.text)
 
 # ==========================================================
 # ❌ SMART RECEIPTS (UNCHANGED)

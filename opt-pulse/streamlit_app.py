@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import os
 from typing import Dict, Any, List
-# Ensure this import exists in your project structure
 from services.data_engine import DataEngine
 
 FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
@@ -20,7 +19,6 @@ st.set_page_config(
 # --------------------------------------------------
 # Global Styling
 # --------------------------------------------------
-# 1. Base Streamlit Theme Overrides
 st.markdown("""
 <style>
 .main {
@@ -52,10 +50,10 @@ h1, h2, h3 {
     font-size: 16px;
     font-weight: 600;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
-# 2. "Retail Wrapped" Specific CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap');
@@ -214,9 +212,6 @@ feature_selection = st.sidebar.radio(
     ["Vibe Report", "Brand Voice Cloner", "Smart Receipts"]
 )
 
-# ==========================================================
-# 1. VIBE REPORT (RETAIL WRAPPED)
-# ==========================================================
 if feature_selection == "Vibe Report":
     st.header("✨ Vibe Report")
     
@@ -302,11 +297,12 @@ if feature_selection == "Vibe Report":
                     st.error(f"Error: {response.text}")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
+    st.markdown(custom_css + html_content, unsafe_allow_html=True)
 
 # ==========================================================
-# 2. BRAND VOICE CLONER
+# ❌ BRAND VOICE CLONER (UNCHANGED)
 # ==========================================================
-elif feature_selection == "Brand Voice Cloner":
+if feature_selection == "Brand Voice Cloner":
     st.header("✍️ Brand Voice Cloner")
     st.caption("Learn from past campaigns and generate high-impact messaging")
 
@@ -315,13 +311,9 @@ elif feature_selection == "Brand Voice Cloner":
 
         @st.cache_data(show_spinner=False)
         def load_contact_ids():
-            try:
-                engine = DataEngine()
-                df = engine.get_contact_ids().collect()
-                return df["cid"].to_list()
-            except Exception as e:
-                st.error(f"Could not load data engine: {e}")
-                return []
+            engine = DataEngine()
+            df = engine.get_contact_ids().collect()
+            return df["cid"].to_list()
 
         contact_ids = load_contact_ids()
 
@@ -340,49 +332,47 @@ elif feature_selection == "Brand Voice Cloner":
             st.error("Select at least one contact")
         else:
             with st.spinner("Analyzing brand voice & user behavior..."):
-                try:
-                    response = requests.post(
-                        f"{FASTAPI_BASE_URL}/process",
-                        json={
-                            "agent_type": "brand_voice",
-                            "contact_ids": selected_cids
-                        }
+                response = requests.post(
+                    f"{FASTAPI_BASE_URL}/process",
+                    json={
+                        "agent_type": "brand_voice",
+                        "contact_ids": selected_cids
+                    }
+                )
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success", False):
+                    result = data.get("result", {})
+
+                    st.markdown('<div class="card success-box">', unsafe_allow_html=True)
+                    st.subheader("✨ Generated Campaign")
+
+                    st.text_area(
+                        "Campaign Body",
+                        value=result.get("new_campaign_body", ""),
+                        height=220
                     )
-                    if response.status_code == 200:
-                        data = response.json()
-                        if data.get("success", False):
-                            result = data.get("result", {})
 
-                            st.markdown('<div class="card success-box">', unsafe_allow_html=True)
-                            st.subheader("✨ Generated Campaign")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric(
+                            "Predicted Success",
+                            f"{result.get('predicted_success_score', 0)} / 100"
+                        )
 
-                            st.text_area(
-                                "Campaign Body",
-                                value=result.get("new_campaign_body", ""),
-                                height=220
-                            )
+                    with col2:
+                        st.write("**Learned Patterns**")
+                        st.json(result.get("inferred_patterns", {}))
 
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.metric(
-                                    "Predicted Success",
-                                    f"{result.get('predicted_success_score', 0)} / 100"
-                                )
-
-                            with col2:
-                                st.write("**Learned Patterns**")
-                                st.json(result.get("inferred_patterns", {}))
-
-                            st.markdown('</div>', unsafe_allow_html=True)
-                        else:
-                            st.error("Failed to generate campaign. Please try again.")
-                    else:
-                        st.error(f"Error from server: {response.text}")
-                except Exception as e:
-                    st.error(f"Connection Error: {e}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.error("Failed to generate campaign. Please try again.")
+            else:
+                st.error(f"Error from server: {response.text}")
 
 # ==========================================================
-# 3. SMART RECEIPTS
+# ❌ SMART RECEIPTS (UNCHANGED)
 # ==========================================================
 elif feature_selection == "Smart Receipts":
     st.header("🛍️ Smart Receipts")
@@ -436,17 +426,12 @@ elif feature_selection == "Smart Receipts":
         submit_receipt = st.form_submit_button("Get Smart Recommendations")
 
         if submit_receipt:
-            try:
-                response = requests.post(
-                    f"{FASTAPI_BASE_URL}/smart-receipt",
-                    json={
-                        "user_id": customer_id,
-                        "current_basket_items": current_basket_payload
-                    }
-                )
-                if response.status_code == 200:
-                    st.json(response.json())
-                else:
-                    st.error(f"Error: {response.status_code}")
-            except Exception as e:
-                st.error(f"Connection Error: {e}")
+            response = requests.post(
+                f"{FASTAPI_BASE_URL}/process",
+                json={
+                    "query" : "Generate smart receipt recommendations for the current purchase.You are only allowed to recommend items from the provided inventory SKU list.Do NOT invent or suggest any product that is not present in the inventory Decision priority: 1. Select complementary items from the inventory that are closely related to the current basket items (same category, usage, or frequently co-purchased). 2. If no strong complement exists, select items from the inventory that match the customer’s past purchase patterns. 3. If neither applies, provide a non-product contextual tip (for example: usage advice or seasonal suggestion) instead of recommending a product. Rules: All recommended products must exist in the provided SKU inventory.If no suitable SKU exists, return a helpful tip instead of a product.Recommend at most 3 items.Each recommendation must include a short reason. Output must be concise and suitable for a digital receipt.",
+                    "user_id": customer_id,
+                    "current_basket_items": current_basket_payload
+                }
+            )
+            st.json(response.json())

@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import os
 from typing import Dict, Any, List
+# Ensure this import exists in your project structure
 from services.data_engine import DataEngine
 
 FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
@@ -19,6 +20,7 @@ st.set_page_config(
 # --------------------------------------------------
 # Global Styling
 # --------------------------------------------------
+# 1. Base Streamlit Theme Overrides
 st.markdown("""
 <style>
 .main {
@@ -50,10 +52,10 @@ h1, h2, h3 {
     font-size: 16px;
     font-weight: 600;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
+# 2. "Retail Wrapped" Specific CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap');
@@ -212,6 +214,9 @@ feature_selection = st.sidebar.radio(
     ["Vibe Report", "Brand Voice Cloner", "Smart Receipts"]
 )
 
+# ==========================================================
+# 1. VIBE REPORT (RETAIL WRAPPED)
+# ==========================================================
 if feature_selection == "Vibe Report":
     st.header("✨ Vibe Report")
     
@@ -297,12 +302,11 @@ if feature_selection == "Vibe Report":
                     st.error(f"Error: {response.text}")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
-    st.markdown(custom_css + html_content, unsafe_allow_html=True)
 
 # ==========================================================
-# ❌ BRAND VOICE CLONER (UNCHANGED)
+# 2. BRAND VOICE CLONER
 # ==========================================================
-if feature_selection == "Brand Voice Cloner":
+elif feature_selection == "Brand Voice Cloner":
     st.header("✍️ Brand Voice Cloner")
     st.caption("Learn from past campaigns and generate high-impact messaging")
 
@@ -311,9 +315,13 @@ if feature_selection == "Brand Voice Cloner":
 
         @st.cache_data(show_spinner=False)
         def load_contact_ids():
-            engine = DataEngine()
-            df = engine.get_contact_ids().collect()
-            return df["cid"].to_list()
+            try:
+                engine = DataEngine()
+                df = engine.get_contact_ids().collect()
+                return df["cid"].to_list()
+            except Exception as e:
+                st.error(f"Could not load data engine: {e}")
+                return []
 
         contact_ids = load_contact_ids()
 
@@ -332,47 +340,49 @@ if feature_selection == "Brand Voice Cloner":
             st.error("Select at least one contact")
         else:
             with st.spinner("Analyzing brand voice & user behavior..."):
-                response = requests.post(
-                    f"{FASTAPI_BASE_URL}/process",
-                    json={
-                        "agent_type": "brand_voice",
-                        "contact_ids": selected_cids
-                    }
-                )
-
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success", False):
-                    result = data.get("result", {})
-
-                    st.markdown('<div class="card success-box">', unsafe_allow_html=True)
-                    st.subheader("✨ Generated Campaign")
-
-                    st.text_area(
-                        "Campaign Body",
-                        value=result.get("new_campaign_body", ""),
-                        height=220
+                try:
+                    response = requests.post(
+                        f"{FASTAPI_BASE_URL}/process",
+                        json={
+                            "agent_type": "brand_voice",
+                            "contact_ids": selected_cids
+                        }
                     )
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get("success", False):
+                            result = data.get("result", {})
 
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric(
-                            "Predicted Success",
-                            f"{result.get('predicted_success_score', 0)} / 100"
-                        )
+                            st.markdown('<div class="card success-box">', unsafe_allow_html=True)
+                            st.subheader("✨ Generated Campaign")
 
-                    with col2:
-                        st.write("**Learned Patterns**")
-                        st.json(result.get("inferred_patterns", {}))
+                            st.text_area(
+                                "Campaign Body",
+                                value=result.get("new_campaign_body", ""),
+                                height=220
+                            )
 
-                    st.markdown('</div>', unsafe_allow_html=True)
-                else:
-                    st.error("Failed to generate campaign. Please try again.")
-            else:
-                st.error(f"Error from server: {response.text}")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric(
+                                    "Predicted Success",
+                                    f"{result.get('predicted_success_score', 0)} / 100"
+                                )
+
+                            with col2:
+                                st.write("**Learned Patterns**")
+                                st.json(result.get("inferred_patterns", {}))
+
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        else:
+                            st.error("Failed to generate campaign. Please try again.")
+                    else:
+                        st.error(f"Error from server: {response.text}")
+                except Exception as e:
+                    st.error(f"Connection Error: {e}")
 
 # ==========================================================
-# ❌ SMART RECEIPTS (UNCHANGED)
+# 3. SMART RECEIPTS
 # ==========================================================
 elif feature_selection == "Smart Receipts":
     st.header("🛍️ Smart Receipts")
@@ -426,11 +436,17 @@ elif feature_selection == "Smart Receipts":
         submit_receipt = st.form_submit_button("Get Smart Recommendations")
 
         if submit_receipt:
-            response = requests.post(
-                f"{FASTAPI_BASE_URL}/smart-receipt",
-                json={
-                    "user_id": customer_id,
-                    "current_basket_items": current_basket_payload
-                }
-            )
-            st.json(response.json())
+            try:
+                response = requests.post(
+                    f"{FASTAPI_BASE_URL}/smart-receipt",
+                    json={
+                        "user_id": customer_id,
+                        "current_basket_items": current_basket_payload
+                    }
+                )
+                if response.status_code == 200:
+                    st.json(response.json())
+                else:
+                    st.error(f"Error: {response.status_code}")
+            except Exception as e:
+                st.error(f"Connection Error: {e}")

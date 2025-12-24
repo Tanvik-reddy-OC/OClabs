@@ -293,7 +293,7 @@ class DataEngine:
         FROM sales s
         JOIN contacts c
             ON s.cid = c.cid
-        JOIN contacts_loyalty cl
+        LEFT JOIN contacts_loyalty cl
             ON c.cid = cl.contact_id
         LEFT JOIN sku p
             ON s.inventory_id = p.sku_id
